@@ -1,5 +1,5 @@
 '''
-This program Will gather stats, talismans, and weapon data in order to
+This program will gather stats, talismans, and weapon data in order to
 tell you your dps and damage per hit. It will also tell you which bosses your 
 build will be good against
 
