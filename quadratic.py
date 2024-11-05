@@ -39,7 +39,7 @@ elif i_check >= 0:
             print(f'TWO REAL SOLUTIONS: x = {x2:.4f} and x = {x1:.4f}')
         else:
             print(f'TWO REAL SOLUTIONS: x = {x1:.4f} and x = {x2:.4f}')
-
+#This is the output for the solutions
 else: 
     sqrt = math.sqrt(-(i_check))
     print(f'COMPLEX SOLUTIONS: x = {b*-1/(2*a):.4f} - {sqrt/(2*a):.4f}i and x = {b*-1/(2*a):.4f} + {sqrt/(2*a):.4f}i')

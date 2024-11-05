@@ -25,4 +25,6 @@ if preferred_spot_1 == preferred_spot_2:
         print(f'Car 1 parks in spot {preferred_spot_1}\nCar 2 parks in spot {preferred_spot_2+1}')
 else:
     print(f'Car 1 parks in spot {preferred_spot_1}\nCar 2 parks in spot {preferred_spot_2}')
+
+
     
