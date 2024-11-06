@@ -2,12 +2,14 @@ import math
 import random
 #This program will be converting any binary number to base 10
 
-#If this were to be turned into a function, below would be the syntax
-def binary_to_base10(binarystr) -> None:
-    binarystr = input('Enter your binary number here: ')
+#Gets inputs
+binarystr = input('Enter your binary number here: ')
+
+def binary_to_base10(binarystr):
     length = int(len(binarystr))
     base_10 = 0
     power_of = length-1
+    invalid = False
 
     #This is the beginning of the conversion
     while power_of >=0:
@@ -20,9 +22,14 @@ def binary_to_base10(binarystr) -> None:
             power_of += -1
             binarystr = binarystr[1:]
         else:
-            print('Invalid binary number')
             power_of = -1
+            print('Invalid binary number')
+            invalid = True
+
             
     #Print out the base 10 number
-    print('Your base 10 number is:',base_10)
+    if invalid == False:
+        return base_10
 
+x = binary_to_base10(binarystr)
+print(f'Your base 10 number is: {x}')
