@@ -50,3 +50,23 @@ confint(mod)
 mod = lm(qsec ~ hp, data = mtcars)
 df_car = data.frame(hp = 270)
 predict(mod, newdata = df_car, interval = "confidence", level = 0.95)
+
+
+
+
+#Multivariable linear regression:
+
+set.seed(33)
+x1 = rnorm(50)
+x2 = rnorm(50)
+e = rnorm(50, sd = 2)
+y = 30 + 5*x1 + 7*x2 + e
+
+plot(x1, y); plot(x2,y)
+
+cor(x1,y); cor(x2,y)
+
+
+
+
+
