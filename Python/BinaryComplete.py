@@ -11,7 +11,7 @@ def binary_to_base10(binarystr):
     power_of = length-1
     invalid = False
 
-    #This is the beginning of the conversion
+    #This is the beginning of the conversion from binary to base 10
     while power_of >=0:
         if binarystr[0] == '1':
             base_10 += 2**power_of
