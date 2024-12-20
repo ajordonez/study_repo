@@ -28,19 +28,14 @@ motor_data <- motor_data %>%
 
 #Making a logistic regression analysis for if there is a Driver fatality or not
 
-mod1 <- glm(FATALITY ~ BOROUGH+VEHICLE_MAKE+VEHICLE_TYPE+PERSON_SEX+DRIVER_LICENSE_STATUS+PERSON_AGE, data = motor_data, family = "binomial")
+mod1 <- glm(FATALITY ~ VEHICLE_TYPE+PERSON_SEX+DRIVER_LICENSE_STATUS+PERSON_AGE, data = motor_data, family = "binomial")
 summary(mod1)
-
 
 #Multicollinearity is not an issue as we can see from the VIF 
 
 install.packages("car")
 library(car)
 vif(mod1)
-
-#Lets try the mod1 again with only the significant or close to significant factors p < 0.1
-mod1 <- glm(FATALITY ~ VEHICLE_TYPE+PERSON_SEX+DRIVER_LICENSE_STATUS+PERSON_AGE, data = motor_data, family = "binomial")
-summary(mod1)
 
 null_mod1 <- glm(FATALITY ~ 1, data = motor_data, family = "binomial")
 anova(null_mod1, mod1, test = "Chisq")
@@ -52,14 +47,11 @@ anova(null_mod1, mod1, test = "Chisq")
 
 #Making a logistic regression analysis for if there is an injury or fatality for the driver of the motorcycle
 
-mod2 <- glm(INJURY_OR_FATALITY ~ BOROUGH+VEHICLE_MAKE+VEHICLE_TYPE+PERSON_SEX+DRIVER_LICENSE_STATUS+PERSON_AGE, data = motor_data, family = "binomial")
+mod2 <- glm(INJURY_OR_FATALITY ~ BOROUGH+VEHICLE_TYPE+PERSON_SEX+DRIVER_LICENSE_STATUS+PERSON_AGE, data = motor_data, family = "binomial")
 summary(mod2)
 
 #Interesting how the results for the INJURY_OR_FATALITY is different than that of just Fatalities, Manhattan seems to be a significant factor
 
-
-mod2 <- glm(INJURY_OR_FATALITY ~ BOROUGH+VEHICLE_TYPE+PERSON_SEX+DRIVER_LICENSE_STATUS+PERSON_AGE, data = motor_data, family = "binomial")
-summary(mod2)
 
 null_mod2 <- glm(INJURY_OR_FATALITY ~ 1, data = motor_data, family = "binomial")
 anova(null_mod2, mod2, test = "Chisq")
@@ -99,6 +91,3 @@ age_summary <- motor_data %>%
 ggplot(age_summary, aes(x = PERSON_AGE, y = PROBABILITY_PER_AGE)) +
   geom_point(color = "red", size = 2) +  
   labs(title = "Likelihood of Injury or Fatality by Age", x = "Age", y = "Likelihood of Injury or Fatality") + theme_minimal()
-
-
-
