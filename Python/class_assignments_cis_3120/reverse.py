@@ -17,5 +17,5 @@ for word in sentence.split():
     reversed_words.append(word[::-1])
 print(" ".join(reversed_words))
     
-    
+
 
