@@ -9,9 +9,6 @@ def introduction():
     print()
 
 
-#Master list to store all the values of the 
-master_list = []
-
 
 #This function will be called in the main function to compare the average to the a b and c integer variables
 def compare_to_avg(a,b,c,avg):
