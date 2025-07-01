@@ -1,0 +1,184 @@
+### 
+# This program will create a xgboost model for some mock P&C insurance data in order to identify fraud in claims
+###
+
+# Get out libraries for analysis
+library(xgboost)
+library(statmod)
+library(tidyverse)
+library(rsample)
+library(caret)
+
+# Data set used: https://www.kaggle.com/datasets/buntyshah/auto-insurance-claims-data
+
+data <- read.csv("C:\\Users\\40535\\OneDrive - AmTrust North America\\Documents\\R Practice\\insurance_claims.csv")
+
+#Turn all the categorical variables into factors, then numeric for analysis
+data <- data %>%
+  mutate_if(is.character, as.factor) %>%
+  mutate_if(is.factor, as.numeric)
+# N is 1 and Y is 2 for fraud analysis
+data$fraud_reported <- data$fraud_reported - 1
+
+
+# Split data
+set.seed(133)
+split <- initial_split(data, prop = 0.7)
+train_data <- training(split)
+test_data <- testing(split)
+
+# Create the xgb Dmatrices for the XGboost model
+train_matrix <- xgb.DMatrix(data = as.matrix(train_data[, !names(train_data) %in% "fraud_reported"]), 
+                            label = train_data$fraud_reported) # Gen Ai assisted
+test_matrix <- xgb.DMatrix(data = as.matrix(test_data[, !names(test_data) %in% "fraud_reported"]), 
+                           label = test_data$fraud_reported) # Gen Ai assisted
+
+# Parameters for the xgboost model
+params <- list(
+  objective = "binary:logistic", # What we are trying to do: classify fraud
+  eval_metric = "logloss", # loss function
+  max_depth = 6, # Depth of each decision tree
+  eta = 0.1, # Learning rate
+  subsample = 0.7, # Subset of the data
+  colsample_bytree = 0.7 # Percent of features used by each decision tree
+)
+
+# Create the model itself
+xgb_model <- xgb.train(
+  params = params, # setting parameters as the ones listed above 
+  data = train_matrix, # Using the xgb matrix for the training data
+  nrounds = 500, # Number of rounds
+  watchlist = list(train = train_matrix, test = test_matrix), # Setting the test and training matrices
+  early_stopping_rounds = 20, # stop early to prevent overfitting
+  print_every_n = 10 # self explainatory
+)
+
+# Save the model into a rds file for the shiny r
+#saveRDS(xgb_model, "xgb_model.rds")
+#write.csv(test_data, file = "test_data.csv", row.names = FALSE)
+
+_________________________________________________________________
+
+
+###
+# This program will use the model made in the xgb_model.rds file and create 
+# a lorenzo and gains curve graphic for the data 
+###
+
+# Load the libraries
+library(xgboost)
+library(statmod)
+library(tidyverse)
+library(shiny)
+library(ggplot2)
+library(shinythemes)
+library(caret)
+
+# Recalling the model from xgboost_practice_model.R
+model <- readRDS("xgb_model.rds")
+
+# Recalling the test data from xgboost_practice_model.R
+test_data <- read.csv("test_data.csv")
+
+# Creating a function that makes the lorenzo curve
+calculateLorenzCurve <- function(predictions, actuals) {
+  data <- data.frame(predictions = predictions, actuals = actuals)
+  data <- data[order(data$predictions), ]
+  data$cum_actuals <- cumsum(data$actuals)
+  data$cum_population <- seq_along(data$actuals) / length(data$actuals)
+  data$cum_actuals <- data$cum_actuals / sum(data$actuals)
+  return(data)
+}
+
+# Creating a function to calculate Gini coefficient
+calculateGini <- function(predictions, actuals) {
+  data <- data.frame(actuals = actuals, predictions = predictions)
+  data <- data[order(data$predictions), ]
+  data$cum_actuals <- cumsum(data$actuals) / sum(data$actuals)
+  data$cum_population <- seq_along(data$actuals) / length(data$actuals)
+  B <- sum(data$cum_actuals) / length(data$cum_actuals)
+  gini <- 1 - 2 * B
+  return(gini)
+}
+
+
+# Create the ui 
+ui <- fluidPage(theme = shinytheme("yeti"),
+  navbarPage(theme = "yeti", 
+    "XGBoost for Claims Fraud",
+    # Create the first panel for gains curve
+    tabPanel(
+      "Gains Curve",
+      
+      mainPanel(
+        plotOutput("gainCurve"),
+      )
+    ),
+    # Second panel for Lorenz Curve
+    tabPanel("Lorenz Curve",
+             
+             sidebarPanel(
+               h4("Inputs for different models coming soon!")
+             ),
+             mainPanel(plotOutput("lorenzCurve")
+              )
+             ),
+    # Third panel for model summary
+    tabPanel("Model Summary",
+             verbatimTextOutput("modelSummary")
+        
+    )
+  )
+)
+
+# Start the server function
+server <- function(input, output) {
+  # Create the simple model summary
+  output$modelSummary <- renderPrint({
+    print(model)
+  })
+  
+  
+  # Generate gain curve plot
+  output$gainCurve <- renderPlot({
+    # Use the model to check each feature's importance and give them each a percentage gain for the chart
+    gain_data <- xgb.importance(model = model)
+    gain_data <- gain_data[order(-gain_data$Gain), ]
+    gain_data$cumulative_gain <- cumsum(gain_data$Gain)
+    gain_data$percentage_gain <- (gain_data$Gain / sum(gain_data$Gain)) * 100
+    
+    # Graph the gains curve
+    ggplot(gain_data, aes(x = reorder(Feature, -Gain), y = cumulative_gain)) +
+      geom_line() +
+      geom_point() +
+      theme_minimal() +
+      labs(title = "Cumulative Gain Curve", x = "Feature", y = "Cumulative Gain") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      geom_text(aes(label = paste0(round(percentage_gain, 2), "%")), vjust = -0.5, size = 3.5)
+  })
+  
+  
+  # Generate the lorenz curve
+  output$lorenzCurve <- renderPlot({
+    # Convert the test data into a xgb friendly format and use it to give us predictions to check against the actual fraud
+    xgb_test <- xgb.DMatrix(data = as.matrix(test_data %>% select(-fraud_reported)))
+    predictions <- predict(model, newdata = xgb_test)
+    actuals <- test_data$fraud_reported
+    lorenz_data <- calculateLorenzCurve(predictions, actuals)
+    gini_coefficient <- calculateGini(predictions, actuals)
+    
+    # Plot the lorenz curve
+    ggplot(lorenz_data, aes(x = cum_population, y = cum_actuals)) +
+      geom_line() +
+      geom_abline(intercept = 0, slope = 1, linetype = "dotted", color = "blue") +
+      theme_minimal() +
+      labs(title = "Lorenz Curve for Fraud Detection", x = "Cumulative Share of Population", y = "Cumulative Share of Fraud") +
+      annotate("text", x = 0.55, y = 0.2, label = paste("Gini Coefficient:", round(gini_coefficient, 5)), size = 5) # Gen Ai Assisted
+    
+  })
+  
+}
+
+# Run app
+shinyApp(ui = ui, server = server)
+
