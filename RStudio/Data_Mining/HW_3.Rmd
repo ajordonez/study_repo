@@ -1,0 +1,51 @@
+---
+title: "HW 3"
+author: "null"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE)
+```
+
+We will be predicting whether the housing price is expensive or not using the `sahp` dataset in the **r02pro** package. 
+
+You can run the following code to prepare the analysis.
+```{r}
+library(r02pro)     #INSTALL IF NECESSARY
+library(tidyverse)  #INSTALL IF NECESSARY
+library(MASS)
+my_sahp <- sahp %>% 
+  na.omit() %>%
+  mutate(expensive = sale_price > median(sale_price)) %>%
+  dplyr::select(gar_car, liv_area, oa_qual, expensive) 
+my_sahp_train <- my_sahp[1:100, ]
+my_sahp_test <- my_sahp[-(1:100), ]
+```
+
+Please answer the following questions.
+
+#### Q1
+    
+a. Using the training data `my_sahp_train` to fit a logistic regression model of `expensive` on each variable (`gar_car`, `liv_area`, `oa_qual`) separately. For each logistic regression, compute the training and test error. Which variable leads to the smallest training error? Which variable leads to the smallest test error?
+
+    **Solution:**
+
+b. Using the training data `my_sahp_train` to fit a logistic regression model of `expensive` on all three variables (`gar_car`, `liv_area`, `oa_qual`). Compute the training and test error. How do the result compare with part a.
+
+    **Solution:**
+
+#### Q2
+
+Using the training data `my_sahp_train` to fit LDA and QDA models of `expensive` on all three variables (`gar_car`, `liv_area`, `oa_qual`). Compute the training and test error. How do the results compare with Q1?
+
+**Solution:**
+
+#### Q3
+
+Q6 in Chapter 4 of ISLRv2 (Page 191). Hint: Use equation (4.7) on Page 137 of ISLRv2.
+
+**Solution:**

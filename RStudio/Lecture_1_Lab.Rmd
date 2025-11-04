@@ -1,0 +1,228 @@
+---
+title: "STA 3950 -- Data Mining and Statistical Learning"
+author: "Ruiyang (Ryan) Wu"
+subtitle: 'Lecture 1: What is Machine Learning?'
+output:
+  pdf_document: default
+  html_document:
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE)
+set.seed(1)
+```
+
+# Basic Commands
+## Current working directory
+Use the following function to get the current working directory, which is the default location where `R` read/write data.
+```{r,eval=FALSE}
+getwd()
+```
+This is usually the directory where you open an `R` script or `R Markdown` file (with filename extension `.R` or `.Rmd`, respectively) using `RStudio`.
+
+## Assignment
+```{r class.source="bg-danger"}
+x <- 1:3
+x
+x <- c(1, 2, 3) # concatenate
+x
+```
+## Documentation look-up
+Use a question mark in front of a function to find its documentation.
+```{r class.source="bg-danger"}
+?length
+help(length)
+```
+
+## Simple arithmetic operations
+```{r class.source="bg-danger"}
+x <- c(1, 2, 3)
+x
+length(x)
+typeof(x)
+y <- c(3L, 1L, 5L)
+y
+length(y)
+typeof(y)
+z <- c("a", "b", "c")
+z
+length(z)
+typeof(z)
+x + y
+x * y
+sqrt(x)
+y^2
+mean(y)
+var(y)
+sd(y)
+```
+
+## Matrices and data frames
+```{r class.source="bg-danger"}
+?matrix
+x <- matrix(data = c(1, 2, 3, 4), nrow = 2, ncol = 2)
+x
+x <- matrix(c(1, 2, 3, 4), 2)
+x
+```
+Data frame is a structured data set organized into matrix form. Each row represents an observation, and each column represents a explanatary variable.
+```{r class.source="bg-danger"}
+df <- data.frame("height" = c(5.6, 6.1), "weight" = c(132, 150))
+df
+```
+Data frames and matrices can be converted to each other.
+```{r class.source="bg-danger"}
+as.data.frame(x)
+as.matrix(df)
+```
+
+## Generating random numbers
+```{r class.source="bg-danger"}
+x <- rnorm(50)  # Generate from the Gaussian/normal distribution
+y <- x + rnorm(50, mean = 50, sd = .1)
+cor(x, y)  # correlation
+```
+`R` uses a pseudo-random number generator, which means it is actually deterministic under the hood. This can help us achieve reproducible result, which is important for scientific research.
+```{r class.source="bg-danger"}
+set.seed(1)
+rnorm(5)
+set.seed(2)
+rnorm(5)
+set.seed(2)
+rnorm(5)
+```
+
+# Graphics
+We introduce the built-in `plot` function. In later lab sessions, we will also learn the more advanced and versatile package `ggplot2`.
+```{r class.source="bg-danger"}
+?graphics::plot
+x <- rnorm(100)
+y <- rnorm(100)
+plot(x, y)
+plot(x, y, xlab = "this is the x-axis",
+     ylab = "this is the y-axis",
+     main = "Plot of X vs Y")
+```
+
+The following code snippet is used to save a plot to a pdf file named "Figure.pdf" in the current working directory.
+```{r, eval=FALSE, class.source="bg-danger"}
+pdf("Figure.pdf")
+plot(x, y, col = "green")
+dev.off()
+```
+
+To plot smooth curves, use the `type = "l"` argument.
+```{r}
+x <- seq(-pi, pi, length=50)
+plot(x, sin(x), type = "l", col = "red", main = "Plot of sin(x) and the Gaussian density")
+lines(x, dnorm(x), col = "blue")  # Add another type "l" curve onto the previous plot
+abline(h = 0, lty = 2)  # Add another horizontal dashed line at y=0 onto the previous plot
+legend("topleft", legend = c("sin(x)", "Gaussian density"), fill = c("red", "blue"))  # Add legends
+```
+
+# Data Subsetting
+Data subsetting is an important technique to extract part of data from the entire data set.
+```{r class.source="bg-danger"}
+A <- matrix(1:16, 4, 4)
+A
+A[2, 3]  # the entry of A in the 2nd row and 3rd column
+```
+This can be extended to select multiple rows/columns at a time.
+```{r class.source="bg-danger"}
+A[c(1, 3), c(2, 4)]
+A[1:3, 2:4]
+A[1:2, ]
+A[, 1:2]
+A[-c(1, 3), ]
+A[-c(1, 3), -c(1, 3, 4)]
+```
+In additional to the previous subsetting functions, data frames have one more frequently used method for subsetting.
+```{r class.source="bg-danger"}
+df
+df$weight
+df$height
+```
+The `dim()` function outputs the number of rows and columns of a matrix/data frame.
+```{r class.source="bg-danger"}
+dim(A)
+dim(df)
+```
+
+# Conditionals
+There are many relational operators that returns either `TRUE` or `FALSE`. Some commonly used ones include `<`, `<=`, `==`, `identical`, `%in%`, `is.na`.
+
+Logical operators act on `TRUE` and `FALSE`. `!` means "not", `&&` means "and", `||` means "or".
+
+Below is an example of conditional statements.
+```{r class.source="bg-danger"}
+x <- c(3)
+y <- c(1, 3, 4)
+if (x %in% y) {
+  print("x is in y")
+} else {
+  print("x is not in y")
+}
+```
+
+# Loops
+Loops are used to execute a certain task multiple times (usually infeasible to carry out one-by-one manually).
+
+We use a for loop to calculate the squared values of a sequence of numbers.
+```{r class.source="bg-danger"}
+k_seq <- c(2, 4, 5, 7, 9)
+k_squared_seq <- numeric(5) # Initialize a vector of zeros to store the squared values.
+```
+
+- Canonical way (recommended):
+```{r class.source="bg-danger"}
+for (i in seq_along(k_seq)) { # i is the index
+  k_squared_seq[i] <- k_seq[i]^2
+}
+print(k_squared_seq)
+```
+- Simplified way (only use for simple loops):
+```{r}
+for (k in k_seq) {
+  print(k^2)
+}
+```
+
+# Functions
+
+Functions are used to modularize duplicated code and reduce redundancy.
+
+Below is a function that generates a random matrix of any desired size.
+```{r}
+random_matrix <- function(nrow = 2, ncol = 3) {
+  n <- nrow * ncol
+  x <- rnorm(n)
+  mtx <- matrix(x, nrow)
+  return(mtx)
+}
+random_matrix(3, 4)
+```
+
+#  Loading Data
+Load `R` built-in data set `iris`:
+```{r class.source="bg-danger"}
+data("iris")
+head(iris)  # only print the first few rows of the data set
+```
+Load data set `Boston` from the `MASS` package:
+```{r class.source="bg-danger"}
+help(package = "MASS")
+library(MASS)  # load the `MASS` package
+data("Boston")
+head(Boston)
+```
+Load data set from `data.txt` file in the current working directory:
+```{r eval=FALSE, class.source="bg-danger"}
+read.table("data.txt")
+```
+Load data set from `data.csv` file in the current working directory:
+```{r eval=FALSE, class.source="bg-danger"}
+read.csv("data.csv")
+```

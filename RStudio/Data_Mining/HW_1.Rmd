@@ -1,0 +1,118 @@
+---
+title: "HW 1"
+author: "Alejandro Ordonez"
+output:
+  word_document: default
+  html_document:
+    number_sections: true
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE)
+```
+
+We will calculate some basic summary statistics about the `sahp` dataset in the **r02pro** package. Please answer the following questions.
+
+You can run the following code to prepare the analysis.
+```{r}
+library(r02pro)
+data("sahp")
+```
+
+#### Q1
+
+a. Use an appropriate `R` function to find $n$ (the number of observations) and $p$ (the number of variables) for this dataset.
+
+    ```{r}
+    n <- nrow(sahp); n
+    
+    p <- ncol(sahp); p
+    
+    ```
+    
+b. Which variables in this dataset are categorical? You do not need an `R` code block for this question. (Hint: Use `?` or `help` function to read the documentation of this dataset where you can learn the details about all variables)
+
+4: oa_qual, house_style, kit_qual, heat_qual. 
+
+c. What is the value of the `oa_qual` variable for the 79th observation in this dataset? Explain the meaning of this value in plain English to someone who is not familiar with this dataset. (Hint: Read the documentation of this dataset)
+
+    ```{r}
+    # B)
+    ?sahp
+    
+    # C)
+    sahp[79, "oa_qual"]
+    print("The overall quality of the 79th observation is fair material")
+    
+    
+    ```
+    
+#### Q2
+
+a. What are the values for the last 5 observations of the `bathroom` variable? Explain the meaning of these values to someone who is not familiar with this dataset. (Hint: Read the documentation of this dataset)
+
+    ```{r}
+    index <- nrow(sahp)-4
+    sahp[index:nrow(sahp), "bathroom"]
+    
+    print("This is the number of bathrooms for the last 5 observations of the dataset. The partial bathrooms could be those that dont include a shower.")
+    
+    ```
+    
+b. Fill in the missing part ($\dots$) of the following partial `R` program to calculate the population variance of the 5 observations in part a.
+
+    ```
+    mean <- (3 + 1.5 + 2 + 1.5 + 2)/5
+    variance <- ((3 - mean)^2 + (1.5 - mean)^2 + (2 - mean)^2 + (1.5 - mean)^2 + (2 - mean)^2)/5
+    variance
+    ```
+    
+    Note that the definition of population variance is: $$variance=\frac{1}{n}\sum_{i=1}^n \left(x_i-\frac{1}{n}\sum_{j=1}^n x_j\right)^2.$$
+    
+    Write the completed program here:
+    
+    ```{r}
+    mean <- (3 + 1.5 + 2 + 1.5 + 2)/5
+    variance <- ((3 - mean)^2 + (1.5 - mean)^2 + (2 - mean)^2 + (1.5 - mean)^2 + (2 - mean)^2)/5
+    variance
+
+    ```
+    
+c. Use the `var` function to calculate the sample variance. Is the result the same as the population variance calculated in part b? If not, what could be the reason? (Hint: Use `?` or `help` function to read the documentation of `var` function)
+
+    ```{r}
+    index <- nrow(sahp)-4
+    var(sahp[index:nrow(sahp), "bathroom"])
+    print("The sample variance is not the same as the population as sample variance and population variance are calculated differently. Because we don't know the actual mean, we have to estimate it in our calculation. This leads to a decrease is degrees of freedom, which is n-1 we are dividing by and not n.")
+    ```
+    
+#### Q3
+
+Plot a histogram of the `liv_area` variable with 15 bins (also known as cells or buckets).
+
+```{r}
+hist(sahp$liv_area,15)
+```
+
+#### Q4
+
+Generate 90 random numbers from the standard normal/Gaussian distribution. Fill the numbers **by row** into a $9 \times 10$ matrix (with 9 rows and 10 columns). What is the value of the entry on the 7th row and 8th column? Use `set.seed(1)` to ensure reproducibility.
+
+```{r}
+  set.seed(1)
+  random <- rnorm(90)
+  random_matrix <- matrix(random, nrow = 9, ncol = 10, byrow = TRUE)
+  random_matrix[7,8]
+  
+```
+
+#### Q5
+
+What do you think of the current pace of the course? Use `R` to print one of the three answers: "too slow", "about right", or "too fast".
+
+```{r}
+    print("about right")
+```

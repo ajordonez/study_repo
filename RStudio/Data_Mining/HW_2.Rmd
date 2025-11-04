@@ -1,0 +1,170 @@
+---
+title: "HW 2"
+author: 'null'
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE)
+```
+
+We will be predicting the housing price using the `sahp` dataset in the **r02pro** R package. Please answer the following questions. **Add your R code blocks as needed.**
+
+You can run the following code to prepare the analysis.
+```{r}
+library(r02pro)     #INSTALL IF NECESSARY
+library(tidyverse)  #INSTALL IF NECESSARY
+my_sahp <- sahp %>% 
+  na.omit() %>%
+  select(gar_car, liv_area, kit_qual, sale_price)
+my_sahp_train <- my_sahp[1:100, ]
+my_sahp_test <- my_sahp[-(1:100), ]
+```
+
+#### Q1
+
+Use the training data `my_sahp_train` to fit a simple linear regression model of `sale_price` on each variable (`gar_car`, `liv_area`, `kit_qual`) separately. For each regression,
+
+a. Interpret the coefficients and compute the $R^2$. Which variable is most useful in predicting the `sale_price` on the training data?
+
+b. Compute the fitted value for the training data and make prediction for the test data, then compute the training and test MSE. Which variable gives the smallest test MSE? Does this agree with the variable with the highest $R^2$? Explain your findings.\
+    
+    Note that, the training MSE is defined as 
+    $$\frac{1}{n_{train}}\sum_{i \in train} (Y_i - \hat Y_i)^2$$
+    and the test MSE is defined as 
+    $$\frac{1}{n_{test}}\sum_{i \in test} (Y_i - \hat Y_i)^2,$$
+    where $n_{train}$ and $n_{test}$ represent the number of observations for the training and test data, repectively.
+    
+**Solution:**
+``` {r}
+# 1)
+
+lm_car <- lm(sale_price ~ gar_car, data = my_sahp_train)
+
+lm_area <- lm(sale_price ~ liv_area, data = my_sahp_train)
+
+lm_qual <- lm(sale_price ~ kit_qual, data = my_sahp_train)
+
+summary(lm_car); summary(lm_area); summary(lm_qual)
+
+# Kit Qual is the best of the 3 variables to predict the sales price as it has the highest R^2. The coefficients represent how much sales price changes with the increase of the given variable by 1 unit. 
+
+# 2) 
+
+# Train and test MSE for car
+pred_lm_car_train <- predict(lm_car, newdata = my_sahp_train); train_error_car <- mean((pred_lm_car_train - my_sahp_train$sale_price)^2)
+
+train_error_car
+
+pred_lm_car_test <- predict(lm_car, newdata = my_sahp_test); test_error_car <- mean((pred_lm_car_test - my_sahp_test$sale_price)^2)
+
+test_error_car
+
+# Train and test MSE for area
+pred_lm_area_train <- predict(lm_area, newdata = my_sahp_train); train_error_area <- mean((pred_lm_area_train - my_sahp_train$sale_price)^2)
+
+train_error_area
+
+pred_lm_area_test <- predict(lm_area, newdata = my_sahp_test); test_error_area <- mean((pred_lm_area_test - my_sahp_test$sale_price)^2)
+
+test_error_area
+
+# Train and test MSE for quality
+pred_lm_qual_train <- predict(lm_qual, newdata = my_sahp_train); train_error_qual <- mean((pred_lm_qual_train - my_sahp_train$sale_price)^2)
+
+train_error_qual
+
+pred_lm_qual_test <- predict(lm_qual, newdata = my_sahp_test); test_error_qual <- mean((pred_lm_qual_test - my_sahp_test$sale_price)^2)
+
+test_error_qual
+
+# Area had the lowest test MSE
+
+```
+
+#### Q2
+
+Use the training data `my_sahp_train` to fit a multiple linear regression model of `sale_price` on all variables, interpret the coefficients and compute the $R^2$. Then compute the training and test MSE. Compare the results to Q1 and explain your findings.
+
+**Solution:**
+```{r}
+lm_full <- lm(sale_price ~ kit_qual + liv_area + gar_car, data = my_sahp_train)
+
+summary(lm_full)
+
+# Train and test MSE for full
+pred_lm_train <- predict(lm_full, newdata = my_sahp_train); train_error <- mean((pred_lm_train - my_sahp_train$sale_price)^2)
+
+train_error
+
+pred_lm_test <- predict(lm_full, newdata = my_sahp_test); test_error <- mean((pred_lm_test - my_sahp_test$sale_price)^2)
+
+test_error
+
+# Using all the variables drastically reduces the training and test MSE. When we look at the coefficents as well it seems that the quality being excellent hasa huge impact on the sale price as well. 
+
+```
+
+#### Q3
+
+Now, use the KNN method for predicting `sale_price` using all predictors. Note: Please use the **formula format** for KNN regression, i.e., `knnreg(formula, data, k)`, so that R will automatically code `kit_qual` as dummy variables.
+
+a. Vary the number of neighbors $K$ from 1 to 50 with increment 1. For each $K$, fit the KNN regression model on the training data, and predict on the test data. Visualize the trends of training and test MSEs as functions of $K$ (see slide #40 of Lecture 2). Discuss your findings.
+
+b. Compare the best KNN result with the linear regression result in Q2. Discuss your findings.
+
+**Solution:**
+
+```{r}
+library(caret)
+library(ggplot2)
+# Part A: 
+
+train_error_vector <- c()
+test_error_vector <- c()
+
+for (n in 1:50){ 
+  knn_full <- knnreg(sale_price ~ kit_qual + liv_area + gar_car, data = my_sahp_train, k = n)
+  
+  pred_knn_train <- predict(knn_full, newdata = my_sahp_train); train_error <- mean((pred_knn_train - my_sahp_train$sale_price)^2)
+
+train_error_vector <- append(train_error_vector, train_error)
+
+pred_knn_test <- predict(knn_full, newdata = my_sahp_test); test_error <- mean((pred_knn_test - my_sahp_test$sale_price)^2)
+
+test_error_vector <- append(test_error_vector, test_error)
+}
+mse_df <- data.frame(K = 1:50, Train_Error = train_error_vector, Test_Error = test_error_vector) 
+mse_long <- tidyr::pivot_longer(mse_df, cols = c(Train_Error,Test_Error), names_to = "Error_Type", values_to = "mse")
+
+ggplot(data = mse_long, mapping = aes(x = K, y = mse, color = Error_Type)) +
+  geom_line() + labs(y = "MSE", color = "Error Type")
+
+
+
+# The lowest test error seems to be above 4000 MSE while the linear regression had an MSE of 2535. Linear regression seems to be better for this scenario.
+```
+
+
+#### Q4
+
+Answer the following questions on a sheet of paper, scan or take a photo of your answer, and upload as an attachment in your homework submission. (R is not needed for these questions)
+
+a. Does the line $y=3x-5$ pass through the point $(3,4)$? Why?
+
+b. ISLR book 2nd Edition Chapter 3.7 Question 6:
+    $$
+    \hat \beta_1 = \frac{\sum^n_{i=1}(x_i - \bar x)(y_i - \bar y)}{\sum^n_{i=1}(x_i - \bar x)^2}
+    $$
+    $$
+    \hat \beta_0 = \bar y - \hat \beta_1 \bar x
+    $$
+    where $\bar y = \frac{1}{n}\sum^n_{i=1}y_i$ and $\bar x = \frac{1}{n}\sum^n_{i=1}x_i$.
+
+    Using the above equations, argue that in the case of simple linear regression, the least squares line always passes through the point $(\bar x, \bar y$).
+
+**Solution:**
+
