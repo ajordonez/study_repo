@@ -1,0 +1,184 @@
+---
+title: "STA 3950 – Data Mining and Statistical Learning"
+author: "Yang Feng and Ruiyang Wu"
+subtitle: 'Lecture 7: Regression and Classification Trees (Lab)'
+output:
+  html_document: 
+    df_print: paged
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE, out.width = "70%")
+```
+
+# Predicting a baseball player’s Salary
+
+Using the Hitters data set. Based on Years (the number of years that he has played in the major leagues) and Hits (the number of hits that he made in the previous year). 
+```{r}
+library(tidyverse)
+data(Hitters, package = 'ISLR')
+salary <- Hitters %>% 
+  dplyr::select(Salary, Years, Hits) %>%
+  drop_na() %>%
+  mutate(logSalary = log(Salary))
+```
+
+The first few rows of the data
+```{r}
+head(salary)
+```
+
+Now split the data into training and test
+```{r}
+salary_tr <- salary[1:150, ]
+salary_te <- salary[-(1:150), ]
+```
+
+
+## Fit a Decision Tree
+
+```{r class.source="bg-danger"}
+library(tree)
+sal_tree <- tree(logSalary ~ Years + Hits, data = salary_tr)
+plot(sal_tree)
+text(sal_tree)
+```
+
+
+## Cross-validation to predict the log Salary
+
+```{r class.source="bg-danger"}
+set.seed(0)
+cv_sal_tree <- cv.tree(sal_tree)
+
+# choose the smallest tree among those with the same cross validation error/deviance
+best_size <- with(cv_sal_tree, min(size[dev == min(dev)]))
+
+#The subtree with best_size terminal nodes
+sal_tree_final <- prune.tree(sal_tree, best = best_size)
+
+ggplot(data.frame(size = cv_sal_tree$size, mse = cv_sal_tree$dev / 150),
+       mapping = aes(x = size, y = mse)) +
+  geom_point(size = 2) + 
+  geom_line() +
+  geom_vline(xintercept = best_size, col = "red")
+```
+
+## Visualizing the pruned regression tree
+
+```{r class.source="bg-danger"}
+plot(sal_tree_final)
+text(sal_tree_final)
+```
+
+## Compute the training and test error
+```{r class.source="bg-danger"}
+pred_tr <- predict(sal_tree_final, newdata = salary_tr)
+pred_te <- predict(sal_tree_final, newdata = salary_te)
+mse_tr <- mean((pred_tr - salary_tr$logSalary)^2)
+mse_te <- mean((pred_te - salary_te$logSalary)^2)
+```
+```{r class.source="bg-danger"}
+mse_tr
+mse_te
+```
+
+## Compare with Linear Regression
+```{r class.source="bg-danger"}
+fit_lm <- lm(logSalary ~ Years + Hits, data = salary_tr)
+pred <- predict(fit_lm, newdata = salary_te)
+mean((pred - salary_te$logSalary)^2)
+```
+
+# Trees for classification: Example for predicting high salary
+
+Create a categorical output variable and split into training and test.
+```{r class.source="bg-danger"}
+salary <- salary %>%
+  mutate(high_salary = as.factor(logSalary > median(logSalary)))
+salary_tr <- salary[1:150, ]
+salary_te <- salary[-(1:150), ]
+```
+
+## Using the entropy to split
+```{r class.source="bg-danger"}
+sal_tree <- tree(high_salary ~ Years + Hits, data = salary_tr)
+set.seed(0)
+cv_sal_tree <- cv.tree(sal_tree, method = "misclass")
+
+# choose the smallest tree among those with the same cross validation error
+best_size <- with(cv_sal_tree, min(size[dev == min(dev)]))
+
+#The subtree with best_size terminal nodes
+sal_tree_final <- prune.tree(sal_tree, best = best_size, method = "misclass")
+
+ggplot(data.frame(size = cv_sal_tree$size, class_err = cv_sal_tree$dev / 150),
+       mapping = aes(x = size, y = class_err)) + 
+  geom_point(size = 2) + 
+  geom_line() +
+  geom_vline(xintercept = best_size, col = "red")
+```
+
+## Visualizing the pruned classification tree
+
+```{r class.source="bg-danger"}
+plot(sal_tree_final)
+text(sal_tree_final)
+```
+
+## Compute the training and test classification error
+```{r class.source="bg-danger"}
+pred_tr <- predict(sal_tree_final, newdata = salary_tr, type = "class")
+pred_te <- predict(sal_tree_final, newdata = salary_te, type = "class")
+class_err_tr <- mean(pred_tr != salary_tr$high_salary)
+class_err_te <- mean(pred_te != salary_te$high_salary)
+```
+```{r class.source="bg-danger"}
+class_err_tr
+class_err_te
+```
+
+## Using the Gini index to split
+
+```{r class.source="bg-danger"}
+sal_tree <- tree(high_salary ~ Years + Hits, data = salary_tr, split = "gini")
+set.seed(0)
+cv_sal_tree <- cv.tree(sal_tree, method = "misclass")
+
+# choose the smallest tree among those with the same cross validation error
+best_size <- with(cv_sal_tree, min(size[dev == min(dev)]))
+
+#The subtree with best_size terminal nodes
+sal_tree_final <- prune.tree(sal_tree, best = best_size, method = "misclass")
+
+ggplot(data.frame(size = cv_sal_tree$size, class_err = cv_sal_tree$dev / 150),
+       mapping = aes(x = size, y = class_err)) + 
+  geom_point(size = 2) + 
+  geom_line() +
+  geom_vline(xintercept = best_size, col = "red")
+```
+
+## Visualizing the pruned classification tree
+
+```{r class.source="bg-danger"}
+plot(sal_tree_final)
+text(sal_tree_final)
+```
+
+
+## Compute the training and test classification error
+```{r class.source="bg-danger"}
+pred_tr <- predict(sal_tree_final, newdata = salary_tr, type = "class")
+pred_te <- predict(sal_tree_final, newdata = salary_te, type = "class")
+class_err_tr <- mean(pred_tr != salary_tr$high_salary)
+class_err_te <- mean(pred_te != salary_te$high_salary)
+```
+```{r class.source="bg-danger"}
+class_err_tr
+class_err_te
+```
+
+
+

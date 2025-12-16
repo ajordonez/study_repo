@@ -1,0 +1,82 @@
+---
+title: "STA 3950 – Data Mining and Statistical Learning"
+author: "Yang Feng and Ruiyang Wu"
+subtitle: "Lecture 8: Bagging, Random Forest, Boosting"
+output:
+  html_document: 
+    df_print: paged
+    number_sections: true
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+In this document, we present an example for regression tree, bagging, random forest, boosting.
+
+## Regression Tree
+
+```{r}
+library(MASS)
+library(tree)
+set.seed(2)
+train <- sample(1:nrow(Boston), nrow(Boston) / 2) ##Divide the data into training and testing 
+tree.boston <- tree(medv ~ ., Boston, subset = train)
+cv.boston <- cv.tree(tree.boston)
+
+bestsize <- with(cv.boston, min(size[dev == min(dev)])) ##Choose the smallest tree among those with the lowest cross validation error
+prune.boston <- prune.tree(tree.boston, best = bestsize) ##Prune the tree to this size
+plot(prune.boston)
+text(prune.boston, pretty=0)
+```
+
+Now, we evaluate its prediction performance.
+
+```{r}
+yhat <- predict(tree.boston, newdata = Boston[-train,])
+boston.test <- Boston[-train, "medv"]
+mean((yhat - boston.test)^2)
+```
+
+
+
+## Bagging
+
+We can use the randomForest function to implement Bagging, with `mtry = p`, the number of predictors. 
+```{r}
+library(randomForest)
+set.seed(1)
+p <- ncol(Boston) - 1
+##Setting mtry = p for bagging
+bag.boston <- randomForest(medv ~ ., data = Boston, subset = train, mtry = p, importance = TRUE)
+bag.boston
+
+yhat.bag <- predict(bag.boston, newdata=Boston[-train, ])
+mean((yhat.bag - boston.test)^2)
+importance(bag.boston)
+varImpPlot(bag.boston)
+```
+
+## Random Forest
+
+```{r}
+set.seed(1)
+rf.boston <- randomForest(medv ~ ., data = Boston, subset = train, importance = TRUE)
+yhat.rf <- predict(rf.boston, newdata = Boston[-train,])
+mean((yhat.rf - boston.test)^2)
+
+importance(rf.boston)
+varImpPlot(rf.boston)
+```
+
+## Boosting
+
+Here, we use the gradient boosting machine (gbm) function to implement boosting.
+```{r}
+library(gbm)
+set.seed(1)
+boost.boston <- gbm(medv ~ ., data = Boston[train, ], distribution = "gaussian", n.trees = 5000, interaction.depth = 1, cv.folds = 5)
+best_n_tress <- which.min(boost.boston$cv.error)
+summary(boost.boston)
+yhat.boost <- predict(boost.boston, newdata = Boston[-train,], n.trees = best_n_tress)
+mean((yhat.boost - boston.test)^2)
+```

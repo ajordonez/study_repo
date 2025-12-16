@@ -1,0 +1,205 @@
+---
+title: "STA 3950 -- Data Mining and Statistical Learning"
+author: "Yang Feng and Ruiyang Wu"
+subtitle: 'Lecture 5: CV (Lab)'
+output:
+  html_document: 
+    df_print: paged
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE)
+```
+
+# Cross-Validation
+Prepare the data:
+```{r}
+library(MASS)
+library(tidyverse)
+data(Boston)
+boston <- Boston %>% dplyr::select(crim, rm, zn, chas, ptratio, medv)
+```
+
+## The validation set approach
+```{r class.source="bg-danger"}
+n <- nrow(boston)
+set.seed(1)
+tr_ind <- sample(n, round(n/2))
+boston_tr <- boston[tr_ind, ]
+boston_val <- boston[-tr_ind, ] #validation set
+
+mod_formula_seq <- c("medv ~ rm",
+                     "medv ~ rm + ptratio",
+                     "medv ~ rm + ptratio + zn",
+                     "medv ~ rm + ptratio + zn + crim")
+cv_mse_seq <- numeric(4)
+names(cv_mse_seq) <- mod_formula_seq
+for (i in 1:4) {
+  form <- as.formula(mod_formula_seq[i])
+  fit <- lm(form, data = boston_tr)
+  pred <- predict(fit, newdata = boston_val)
+  cv_mse_seq[i] <- mean((pred - boston_val$medv)^2)
+}
+cv_mse_seq
+```
+
+
+## Leave-One-Out Cross-Validation (LOOCV)
+
+```{r class.source="bg-danger"}
+mod_formula_seq <- c("medv ~ rm",
+                     "medv ~ rm + ptratio",
+                     "medv ~ rm + ptratio + zn",
+                     "medv ~ rm + ptratio + zn + crim")
+cv_mse_seq <- numeric(4)
+names(cv_mse_seq) <- mod_formula_seq
+for (i in 1:4) {
+  form <- as.formula(mod_formula_seq[i])
+  pred <- numeric(n)
+  for (j in 1:nrow(boston)) {
+    fit <- lm(form, data = boston[-j, ])
+    pred[j] <- predict(fit, newdata = boston[j, ])
+  }
+  cv_mse_seq[i] <- mean((pred - boston$medv)^2)
+}
+cv_mse_seq
+```
+
+```{r}
+library(boot)
+mod_formula_seq <- c("medv ~ rm",
+                     "medv ~ rm + ptratio",
+                     "medv ~ rm + ptratio + zn",
+                     "medv ~ rm + ptratio + zn + crim")
+cv_mse_seq <- numeric(4)
+names(cv_mse_seq) <- mod_formula_seq
+for (i in 1:4) {
+  form <- as.formula(mod_formula_seq[i])
+  fit <- glm(form, data = boston)
+  cv_mse_seq[i] <- cv.glm(boston, fit)$delta[1]
+}
+cv_mse_seq
+```
+
+
+## $k$-fold CV for model selection
+
+- Suppose in the `Default` dataset, we are deciding between three models 
+- model 1: use `rm` to predict `medv`
+- model 2: use `rm` and `ptratio` to predict `medv`
+- model 3: use `rm`, `ptratio`, and `zn` to predict `medv`
+- To choose between these three models using 5-fold CV, we calculate $CV_{(5)}$ for models 1, 2, 3 and choose the model with the smallest $CV_{(5)}$. 
+- The same idea extends to the case where we need to choose among many models.  
+
+
+    ```{r class.source="bg-danger"}
+    ##K-Fold CV
+    K <- 5
+    n <- nrow(boston)
+    set.seed(1)
+    fold_ind <- sample(rep_len(1:K, n)) # randomly split dataset into K folds
+    mod_formula_seq <- c("medv ~ rm",
+                         "medv ~ rm + ptratio",
+                         "medv ~ rm + ptratio + zn",
+                         "medv ~ rm + ptratio + zn + crim")
+    cv_mse_seq <- numeric(4)
+    names(cv_mse_seq) <- mod_formula_seq
+    for (i in 1:4) {
+      form <- as.formula(mod_formula_seq[i])
+      pred <- numeric(n)
+      for (j in 1:K) {
+        fit <- lm(form, data = boston[fold_ind != j, ])
+        pred[fold_ind == j] <- predict(fit, newdata = boston[fold_ind == j, ])
+      }
+      cv_mse_seq[i] <- mean((pred - boston$medv)^2)
+    }
+    cv_mse_seq
+    ```
+
+
+    ```{r}
+    library(boot)
+    mod_formula_seq <- c("medv ~ rm",
+                         "medv ~ rm + ptratio",
+                         "medv ~ rm + ptratio + zn",
+                         "medv ~ rm + ptratio + zn + crim")
+    cv_mse_seq <- numeric(4)
+    names(cv_mse_seq) <- mod_formula_seq
+    for (i in 1:4) {
+      form <- as.formula(mod_formula_seq[i])
+      fit <- glm(form, data = boston)
+      set.seed(1)
+      cv_mse_seq[i] <- cv.glm(boston, fit, K = 5)$delta[1]
+    }
+    cv_mse_seq
+    ```
+
+## Use $k$-fold CV for classification 
+
+- The basic idea of CV for classification is the same as that for regression, except the way to calculate $CV_{(k)}$
+    + For example, the LOOCV error rate is 
+$$
+CV_{(n)} = \frac{1}{n}\sum_{i=1}^n Err_i\,,
+$$
+    + where $Err_i = I_{y_i \neq {\hat y}_i}$
+
+    ```{r class.source="bg-danger"}
+    library(tidyverse)
+    library(ISLR)
+    K <- 5
+    n <- nrow(Default)
+    set.seed(1)
+    fold_ind <- sample(rep_len(1:K, n))
+    mod_formula_seq <- c("default ~ balance",
+                         "default ~ balance + income")
+    cv_error_seq <- numeric(2)
+    names(cv_error_seq) <- mod_formula_seq
+    for (i in 1:2) {
+      form <- as.formula(mod_formula_seq[i])
+      pred <- factor(levels = levels(Default$default)) # initialize a (categorical) factor for y_hat
+      for (j in 1:K) {
+        fit <- glm(form, data = Default[fold_ind != j, ],
+                   family = "binomial")
+        pred_prob <- predict(fit, newdata = Default[fold_ind == j, ],
+                             type = "response")
+        pred_label <- ifelse(pred_prob > 0.5, "Yes", "No")
+        pred[fold_ind == j] <- pred_label
+      }
+      cv_error_seq[i] <- mean(pred != Default$default)
+    }
+    cv_error_seq
+    ```
+
+
+## Choosing the $K$ in KNN
+
+```{r class.source="bg-danger"}
+library(caret)
+library(ISLR)
+K <- 5 # number of folds
+n <- nrow(Default)
+set.seed(1)
+fold_ind <- sample(rep_len(1:K, n))
+K_seq <- seq(from = 1, to = 300, by = 30) # number of neighbors for KNN
+cv_error_seq <- numeric(length(K_seq))
+for (i in seq_along(K_seq)) {
+  K_cur <- K_seq[i]
+  pred_knn <- factor(levels = levels(Default$default))
+  for (j in 1:K) {
+    fit_knn <- knn3(default ~ balance,
+                    data = Default[fold_ind != j, ], k = K_cur)
+    pred_knn[fold_ind == j] <-
+      predict(fit_knn, newdata = Default[fold_ind == j, ], type = "class")
+    }
+  cv_error_seq[i] <- mean(pred_knn != Default$default)
+  }
+```
+
+```{r class.source="bg-danger"}
+knn_re <- data.frame(K = K_seq, CV_error = cv_error_seq)
+ggplot(knn_re, mapping = aes(x = K, y = CV_error)) +
+  geom_point(size = 1) +
+  geom_line(linewidth = 1)
+```

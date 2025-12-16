@@ -1,0 +1,191 @@
+---
+title: "STA 3950 -- Data Mining and Statistical Learning"
+author: "Yang Feng and Ruiyang Wu"
+subtitle: 'Lecture 3: Logistic Regression, LDA, QDA (Lab)'
+output:
+  html_document: 
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE)
+```
+
+
+The `Default` dataset
+
+```{r, eval=TRUE}
+library(tidyverse)
+library(ISLR)
+data(Default)
+Default[c(1:2,242:244), ]
+
+ggplot(Default) +
+  geom_boxplot(mapping = aes(x = default, y = balance))
+```
+
+From the boxplots, we guess that `balance` might have good prediction power
+
+# One variable logistic regression
+
+## Use `balance` to predict `default`
+
+- Make sure the output variable `default` is of `factor` data type.
+    ```{r class.source="bg-danger"}
+    Default$default <- as.factor(Default$default)
+    ```
+- Split the data into training and testing
+    ```{r, echo = TRUE, class.source="bg-danger"}
+    default_tr <- Default[1:3000, ]
+    default_te <- Default[-(1:3000), ]
+    ```
+
+- Fit the logistic regression model on the training data.
+    ```{r, echo = TRUE, class.source="bg-danger"}
+    fit_balance <- glm(default ~ balance, data = default_tr, family='binomial');
+    summary(fit_balance)
+    ```
+
+
+## Training Error
+
+- How good is the prediction on training data?
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    # Find P̂(Y = 1 | newX), which is between 0 and 1
+    pred_train_prob <- predict(fit_balance, newdata = default_tr, type = 'response')
+    
+    # Cut off P̂(Y = 1 | newX) at 0.5 threshold 
+    class_labels <- levels(default_tr$default)
+    c0 <- class_labels[1]
+    c1 <- class_labels[2]
+    pred_train_label <- ifelse(pred_train_prob > 0.5, c1, c0)
+    
+    # Confusion matrix
+    table(predicted = pred_train_label,
+          true = default_tr$default)
+    ```
+
+- Now, we can get the training error.
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    mean(pred_train_label != default_tr$default)
+    ```
+
+
+- The overall training classification error looks good.
+
+
+## Test Error
+
+- How good is the prediction on test data?
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    pred_test_prob <- predict(fit_balance, newdata = default_te, type = 'response')
+    pred_test_label <- ifelse(pred_test_prob > 0.5, c1, c0)
+    table(predicted = pred_test_label,
+          true = default_te$default)
+    ```
+
+- Now, we can get the test classification error.
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    mean(pred_test_label != default_te$default)
+    ```
+
+
+- The overall test classification error looks also very good!
+
+
+# Multiple logistic regression
+
+
+## Predict `default` using both `balance` and `student`:
+
+```{r, echo=TRUE, class.source="bg-danger"}
+fit_bal_stu <- glm(default ~ balance + student, data= default_tr, family='binomial')
+```
+
+```{r, echo=TRUE, class.source="bg-danger"}
+summary(fit_bal_stu)
+```
+
+## (Multiple) logistic regression: compute the training error
+
+```{r, echo=TRUE, class.source="bg-danger"}
+pred_train_prob <- predict(fit_bal_stu, newdata = default_tr, type = 'response')
+pred_train_label <- ifelse(pred_train_prob > 0.5, c1, c0)
+table(predicted = pred_train_label,
+      true = default_tr$default)
+mean(pred_train_label != default_tr$default)
+```
+
+
+- This training classification error is smaller than that of the model using just `balance`
+
+
+##  (Multiple) logistic regression: compute the test error
+
+```{r, echo=TRUE, class.source="bg-danger"}
+pred_test_prob <- predict(fit_bal_stu, newdata = default_te, type = 'response')
+pred_test_label <- ifelse(pred_test_prob > 0.5, c1, c0)
+mean(pred_test_label != default_te$default)
+```
+
+- The same error as only using the `balance`.
+
+# Linear Discriminant Analysis (LDA)
+## Analyzing Default Data using LDA
+
+
+```{r, echo=TRUE, class.source="bg-danger"}
+library(MASS) # lda() is in `MASS` library
+lda.fit <- lda(default ~ balance, data = default_tr)
+lda.fit
+```
+
+
+## Training and Test Error
+
+- Training Error
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    lda.predict <- predict(lda.fit, default_tr)
+    lda.class <- lda.predict$class
+    mean(lda.class != default_tr$default)
+    ```
+
+
+- Test Error
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    lda.predict <- predict(lda.fit, default_te)
+    lda.class <- lda.predict$class
+    mean(lda.class != default_te$default)
+    ```
+
+# Quadratic discriminant analysis (QDA)
+
+## Analyzing Default Data using QDA
+
+
+```{r, echo=TRUE, class.source="bg-danger"}
+qda.fit <- qda(default ~ balance, data = default_tr)
+qda.fit
+```
+
+
+## Training and Test Error
+
+- Training Error
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    qda.predict <- predict(qda.fit, default_tr)
+    qda.class <- qda.predict$class
+    mean(qda.class != default_tr$default)
+    ```
+
+
+- Test Error
+    ```{r, echo=TRUE, class.source="bg-danger"}
+    qda.predict <- predict(qda.fit, default_te)
+    qda.class <- qda.predict$class
+    mean(qda.class != default_te$default)
+    ```
+
+

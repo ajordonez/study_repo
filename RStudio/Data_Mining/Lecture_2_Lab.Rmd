@@ -1,0 +1,383 @@
+---
+title: "STA 3950 -- Data Mining and Statistical Learning"
+author: "Yang Feng and Ruiyang Wu"
+subtitle: 'Lecture 2: Linear Regression (Lab)'
+output:
+  html_document:
+#    pandoc_args: --lua-filter=color-text.lua
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, eval = TRUE,
+  message = FALSE, warnings = FALSE,
+  fig.align = 'center'
+)
+```
+
+# Data Exploration
+
+Example: Boston housing data
+
+- Output (response, target, dependent) variable is [medv]{color="red"}, the median home price in neighborhoods of Suburbs of Boston
+- Input variables include (but not limited to)
+	* [crim]{color="blue"}: per capita crime rate by town
+	* [rm]{color="blue"}: average number of rooms per dwelling
+	* [zn]{color="blue"}: proportion of large lots (zoned for > $25,000$ feet)
+	* [chas]{color="blue"}: whether a home is near the Charles river ($x \in \{0, 1\}$)
+	* [ptratio]{color="blue"}: pupil-teacher ratio by town
+
+
+- Let's do a little data exploration
+
+```{r}
+library(MASS)   
+library(tidyverse)   #INSTALL IF NEEDED
+library(caret)       #INSTALL IF NEEDED, FOR KNN
+data(Boston)
+boston <- Boston %>% dplyr::select(crim, rm, zn, chas, ptratio, medv)
+head(boston)
+summary(boston)
+```
+
+# Simple Linear Regression
+## Boston housing: Number of Bedrooms
+
+Idea: let us run a regression on each of these, and see which is best, first, the number of bedrooms `rm`.
+
+```{r class.source="bg-danger"}
+fit_rm <- lm(medv ~ rm, data = boston)
+fit_rm
+```
+
+
+
+
+## Measuring the fit
+
+Compute its fitted values $\hat y_i$ and residuals
+```{r class.source="bg-danger"}
+df_rm <- data.frame(
+  true_response = boston$medv,
+  fitted_response = fit_rm$fitted.values,
+  residual = fit_rm$residuals
+)
+head(df_rm)
+summary(fit_rm)$r.squared    #compute R2
+```
+
+
+## Visualization
+
+
+```{r class.source="bg-danger"}
+ggplot(data = boston, mapping = aes(x = rm, y = medv)) + 
+  geom_point(size = 1) + 
+  geom_smooth(method = "lm", se = FALSE, linewidth = 1)
+
+ggplot(
+  data = df_rm,
+  mapping = aes(x = fitted_response, y = true_response)
+) +
+  geom_point(size = 1) +
+  geom_abline(slope = 1, intercept = 0, linewidth = 1, color = "blue")+
+  coord_fixed(ratio = 1)
+
+ggplot(data = df_rm, mapping = aes(x = fitted_response, y = residual)) +
+  geom_point(size = 1) +
+  geom_hline(yintercept = 0, linewidth = 1, color = "blue")
+```
+
+
+## Boston housing: Charles River
+
+Categorical predictor
+ 
+```{r}
+fit_chas <- lm(medv ~ chas, data = boston)
+fit_chas
+summary(fit_chas)$r.squared
+```
+
+```{r}
+ggplot(data = boston, mapping = aes(x = chas, y = medv)) + 
+  geom_point(size = 1) + 
+  geom_smooth(method = "lm", se = FALSE, linewidth = 1)
+```
+
+Its $R^2=$ `r summary(fit_chas)$r.squared`
+
+
+## Boston housing: Student to teacher ratio
+
+
+```{r}
+fit_ptratio <- lm(medv ~ ptratio, data = boston)
+fit_ptratio
+summary(fit_ptratio)$r.squared
+```
+
+```{r}
+ggplot(data = boston, mapping = aes(x = ptratio, y = medv)) +
+  geom_point(size = 1) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 1)
+```
+
+# Multiple Linear Regression
+## Boston housing: number of bedrooms and student to teacher ratio
+
+
+```{r class.source="bg-danger"}
+fit_rm_ptratio <- lm(medv ~ rm + ptratio, data = boston)
+fit_rm_ptratio
+summary(fit_rm_ptratio)$r.squared
+```
+
+
+
+## Housing data: regression on everything
+\footnotesize
+```{r class.source="bg-danger"}
+fit_all <- lm(formula = medv ~ ., data = boston)
+```
+
+```{r class.source="bg-danger"}
+df_all <- data.frame(
+  true_response = boston$medv,
+  fitted_response = fit_all$fitted.values,
+  residual = fit_all$residuals
+)
+df_stacked <- rbind(
+  cbind(df_rm, type = "rm"),
+  cbind(df_all, type = "all")
+)
+ggplot(
+  df_stacked,
+  mapping = aes(
+    x = fitted_response,
+    y = true_response,
+    color = type
+  )
+) + 
+  geom_point(size = 1) +
+  geom_abline(slope = 1, intercept = 0, linewidth = 1) +
+  coord_fixed(ratio = 1)
+```
+
+## Summary of `lm`
+
+
+```{r class.source="bg-danger"}
+summary(fit_rm_ptratio)
+```
+
+
+## ANOVA: reduce model vs. full model
+
+- Reduced model: `medv ~ 1` (no variable)
+- Full model: `medv ~ rm + ptratio`
+```{r}
+fit_null <- lm(medv ~ 1, data = boston)
+anova(fit_null, fit_rm_ptratio)
+```
+
+
+## CI and Predicting using the linear regression model  
+
+```{r}
+confint(fit_rm_ptratio, level = 0.95) # 95% CI for the coefficients 
+```
+```{r}
+df_test <- data.frame(rm=1, ptratio=2)
+predict(
+  fit_rm_ptratio,
+  newdata = df_test,
+  level = 0.95, interval = "confidence"
+)
+```
+
+```{r}
+predict(
+  fit_rm_ptratio,
+  newdata = df_test,
+  level = 0.95, interval = "prediction"
+)
+```
+
+```{r}
+df_test <- data.frame(rm = c(1:5), ptratio = c(2:6))
+predict(
+  fit_rm_ptratio,
+  newdata = df_test,
+  level = 0.95, interval = "confidence"
+)
+```
+
+
+
+##  Train and testing in the linear regression model  
+
+We can split the data into training and testing.
+
+```{r class.source="bg-danger"}
+boston_tr <- boston[1:400, ]
+boston_te <- boston[-(1:400), ]
+```
+
+
+1. Fit the model on the training data. 
+    ```{r class.source="bg-danger"}
+    fit_lm <- lm(medv ~ rm + ptratio, data = boston_tr)
+    ```
+
+2. Compute the fitted value on the training data and compute the training error.
+    ```{r class.source="bg-danger"}
+    pred_lm_train <- predict(fit_lm, newdata = boston_tr)
+    train_error <- mean((pred_lm_train - boston_tr$medv)^2)
+    train_error
+    ```
+
+3. Compute the predicted value on the test data and compute the test error.
+    ```{r class.source="bg-danger"}
+    pred_lm_test <- predict(fit_lm, newdata = boston_te)
+    test_error <- mean((pred_lm_test - boston_te$medv)^2)
+    test_error
+    ```
+
+
+# Qualitative Predictors
+
+We usually code qualitative variables by **dummy variables** (variables taking values $0$ and $1$). 
+```{r}
+boston$size <- cut_number(boston$rm, 3)              #create a qualitative variable
+levels(boston$size) <- c("Small", "Medium", "Big")   #set the labels
+head(boston %>% dplyr::select(medv, rm, size))       #select the variables
+```
+
+
+R will automatically do the conversion for us in `lm()`
+```{r class.source="bg-danger"}
+fit_size <- lm(medv ~ size + crim, data = boston)
+summary(fit_size)
+```
+
+
+# $K$ Nearest Neighbors
+
+## KNN on Boston Housing
+Model `medv ~ rm + ptratio`:
+```{r class.source="bg-danger"}
+# library(caret) # load "caret" package as needed
+fit_knn <- knnreg(medv ~ rm + ptratio, data = boston_tr, k = 15)
+y_train_hat <- predict(fit_knn, newdata = boston_tr)
+mean((boston_tr$medv - y_train_hat)^2)
+y_test_hat <- predict(fit_knn, newdata = boston_te)
+mean((boston_te$medv - y_test_hat)^2)
+```
+
+
+## KNN: Generate Data
+Recall the generic regression model $Y = f(X) + \epsilon$. We choose $f(x) = \sin(x)$, a periodic, non-linear function, to be the true regression function.
+```{r}
+# Generate training data
+set.seed(1)
+x <- seq(from = -6, to = 6, by = 0.3)
+y <- sin(x) + rnorm(length(x))/2
+data_tr <- data.frame(x = x, y = y)
+head(data_tr)
+```
+
+```{r}
+# Make plot
+p <-
+  ggplot(data_tr, mapping = aes(x = x, y = y)) +
+  geom_point()
+
+x_positions <- seq(from = -6, to = 6, by = 0.1)
+data_oracle <- data.frame(x = x_positions, y = sin(x_positions))
+p +
+  geom_line(
+    data = data_oracle,
+    mapping = aes(x = x, y = y),
+    linewidth = 1
+  )
+```
+
+Try linear model:
+```{r}
+p +
+  geom_smooth(
+    method = "lm", formula = y ~ x, se = FALSE,
+    color = "red", linewidth = 1
+  )
+```
+
+
+## KNN: Different choice of $K$
+We first generate the test data for calculating test MSE:
+```{r}
+# Generate test data
+x_te <- seq(from = -6, to = 6, by = 0.01)
+y_te <- sin(x_te) + rnorm(length(x_te))/2
+data_te <- data.frame(x = x_te, y = y_te)
+```
+
+Next, plot training and test MSEs versus $K$.
+```{r class.source="bg-danger"}
+# library(caret) # load "caret" package as needed
+# Calculate the MSEs for different K
+k_seq <- seq(1, 41, 1)
+mse_seq_tr <- mse_seq_te <- NULL
+for(i in seq_along(k_seq)) {
+  fit <- knnreg(y ~ x, data = data_tr, k = k_seq[i])
+  y_hat_tr <- predict(fit, data_tr)
+  mse_seq_tr[i] <- mean((data_tr$y - y_hat_tr)^2)
+  y_hat_te <- predict(fit, data_te)
+  mse_seq_te[i] <- mean((data_te$y - y_hat_te)^2)
+}
+
+mse_stacked <-
+  rbind(
+    data.frame(k = k_seq, mse = mse_seq_tr, type = "train"),
+    data.frame(k = k_seq, mse = mse_seq_te, type = "test")
+  )
+
+ggplot(mse_stacked, mapping = aes(x = k, y = mse, color = type)) +
+  geom_line(linewidth = 1) +
+  geom_point()
+```
+
+```{r}
+# Plot the estimated f hat function for different K
+k_seq <- c(1, 5, 41)
+pred_df <- NULL
+for(i in seq_along(k_seq)) {
+  fit <- knnreg(y ~ x, data = data_tr, k = k_seq[i])
+  pred_df <- rbind(
+    pred_df,
+    data.frame(
+      x = data_oracle$x,
+      y = predict(fit, data_oracle),
+      k = k_seq[i]
+    )
+  )
+}
+pred_df$k <- factor(pred_df$k)
+ggplot(pred_df) +
+  geom_step(
+    mapping = aes(x = x, y = y, color = k),
+    alpha = 0.5, linewidth = 1
+  ) +
+  geom_line(
+    data = data_oracle,
+    mapping = aes(x = x, y = y),
+    linewidth = 1
+  ) +
+  geom_point(data_tr, mapping = aes(x = x, y = y))
+```
+
+- $K=1$: perfect fit on training data, too rough, bias low, [variance high]{color="red"}
+- $K=41$ ($K$ is the same as the sample size $n$): constant fit, just the sample average, too smooth, [bias high]{color="red"}, variance low
+- $K=5$: a good balance
